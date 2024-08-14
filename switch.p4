@@ -40,12 +40,17 @@ header ipv6_t {
     IPv6Address dest_address;
 }
 
+header packet_data {
+    varbit<256> data;
+}
 
 struct headers_t {
     ethernet_t ethernet;
-    ipv4_t     ipv4;
-    ipv6_t     ipv6;
+    ipv4_t      ipv4;
+    ipv6_t      ipv6;
+    packet_data data;
 }
+
 
 struct metadata_t {
 }
@@ -73,16 +78,23 @@ parser my_parser(packet_in packet,
         packet.extract(hd.ipv4);
         verify(hd.ipv4.version == 4w4, error.IPv4IncorrectVersion);
         verify(hd.ipv4.ihl == 4w5, error.IPv4OptionsNotSupported);
+	//TODO: A better place to put this?
+	hd.ethernet.ether_type = 0x86DD;
 	hd.ipv6.setValid();
 	hd.ipv6.version = 4w6;
 	hd.ipv6.traffic_class = hd.ipv4.diffserv;
 	hd.ipv6.flow_label = 0;
-	hd.ipv6.payload_length = hd.ipv4.total_len + 20;
+	hd.ipv6.payload_length = hd.ipv4.total_len - 20;
 	hd.ipv6.next_header = hd.ipv4.protocol;
 	hd.ipv6.hop_limit = hd.ipv4.ttl;
 	hd.ipv6.source_address = (bit<128>) hd.ipv4.src_addr << 96;
 	hd.ipv6.dest_address = (bit<128>) hd.ipv4.dst_addr << 96;
 
+        transition accept;
+    }
+    state parse_data {
+	//Extract packet data
+	packet.extract(hd.data,(bit<32>) hd.ipv6.payload_length);
         transition accept;
     }
 }
@@ -100,6 +112,7 @@ control my_deparser(packet_out packet,
 control my_verify_checksum(inout headers_t hdr,
                          inout metadata_t meta)
 {
+    //TODO:
     apply { }
 }
 
