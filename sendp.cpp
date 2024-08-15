@@ -50,27 +50,6 @@ public:
 };
 
 
-#if 0
-static uint16_t
-in_cksum(uint16_t *addr, int count)
-{
-  uint32_t sum = 0;
-  while (count > 1) {
-      sum += * addr++;
-      count -= 2;
-  }
-
-  if (count > 0)
-    sum += * (unsigned char *) addr;
-
-  while (sum >> 16)
-    sum = (sum & 0xffff) + (sum >> 16);
-  uint16_t checksum = ~sum;
-
-  return checksum;
-}
-#endif
-
 static uint16_t
 in_cksum(uint16_t *addr, int len)
 {
@@ -106,7 +85,7 @@ ip4::ip4(uint8_t dscp, uint16_t len,
     uint16_t ident, uint16_t flags_frag_ofs, uint8_t ttl,
     uint8_t proto, uint32_t src, uint32_t dst): dscp(dscp),
     len(htons(len)), ident(ident), flags_frag_ofs(flags_frag_ofs), 
-    ttl(ttl), proto(htons(proto)),cksum(0),src(src),dst(dst)
+    ttl(ttl), proto(proto),cksum(0),src(src),dst(dst)
 {
   version_ihl=4<<4 | 5;
   uint16_t c_ck = in_cksum((uint16_t *) this,sizeof(*this));
@@ -127,8 +106,9 @@ int main(int argc, char *argv[]) {
 
     uint8_t e_src[6] = {1,2,3,4,5,6};
     uint8_t e_dst[6] = {7,8,9,0xa,0xb,0xc};
+    //TODO: Fix parameter spaghet
     ether eth(e_dst,e_src,0x0800);
-    ip4 ip(0,20,0,0,1,253,0xaaaaaaaa,0xbbbbbbbb);
+    ip4 ip(0,30,0,0,1,0x11,0xaaaaaaaa,0xbbbbbbbb);
 
     /* Open RAW socket to send on */
     if ((sockfd = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW)) == -1) {
@@ -153,11 +133,16 @@ int main(int argc, char *argv[]) {
 	return 1;
     }
 
+    //TODO: stop copying
     memcpy(sendbuf+tx_len,&eth,sizeof(ether));
     tx_len+=sizeof(ether);
-
     memcpy(sendbuf+tx_len,((char *) &ip),sizeof(ip4));
     tx_len+=sizeof(ip4);
+
+    //add some payload
+    //TODO: Make this rigorous, and add encapsulation functions
+    memset(sendbuf+tx_len, 0xff, 10);
+    tx_len+=10;
 
     FILE *pkt_dsk = fopen("pkt","wb");
     assert(pkt_dsk != 0);
