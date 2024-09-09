@@ -94,6 +94,7 @@ parser my_parser(packet_in packet,
   }
 }
 
+//TODO: Emit data
 control my_deparser(packet_out packet,
     in headers_t hdr)
 {
@@ -103,6 +104,7 @@ control my_deparser(packet_out packet,
   }
 }
 
+//TODO: Verify cksum
 control my_verify_checksum(inout headers_t hdr,
     inout metadata_t meta)
 {
